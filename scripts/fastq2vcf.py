@@ -18,9 +18,9 @@ def get_step_num(prefix):
 
 def main_trim(args):
     if args.single:
-        fm.run_cmd("trimmomatic SE -phred33 %(read1)s %(prefix)s_trimmed.fq LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:36" % vars(args))
+        fm.run_cmd("fastp -i %(read1)s -o %(prefix)s_trimmed.fq " % vars(args))
     else:
-        fm.run_cmd("trimmomatic PE -phred33 %(read1)s %(read2)s -baseout %(prefix)s LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:36" % vars(args))
+        fm.run_cmd("fastp -i %(read1)s -I %(read2)s -o %(prefix)s_1 -O %(prefix)s_2 --thread 6 -j %(prefix)s.json -h  %(prefix)s.html " % vars(args))
 
 
 def main_map(args):
@@ -31,17 +31,17 @@ def main_map(args):
     if "trimmed" in vars(args) and args.single:
         args.reads = "%(prefix)s_trimmed.fq" % vars(args)
     elif "trimmed" in vars(args) and not args.single:
-        args.reads = "%(prefix)s_1P %(prefix)s_2P" % vars(args)
+        args.reads = "%(prefix)s_1 %(prefix)s_2" % vars(args)
     elif "trimmed" not in vars(args) and args.single:
         args.reads = "%(read1)s %(read2)s" % vars(args)
     elif "trimmed" not in vars(args) and not args.single:
         args.reads = "%(read1)s" % vars(args)
     if args.redo or args.step<1:
-        fm.run_cmd("bwa mem -t %(threads)s -R \"@RG\\tID:%(prefix)s\\tSM:%(prefix)s\\tPL:Illumina\" %(ref)s %(reads)s | samtools view -@ %(threads)s -b - | samtools fixmate -@ %(threads)s -m - - | samtools sort -@ %(threads)s - | samtools markdup -@ %(threads)s - %(prefix)s.mkdup.bam -" % vars(args))
+        fm.run_cmd("bwa mem -t %(threads)s -R \"@RG\\tID:%(prefix)s\\tSM:%(prefix)s\\tPL:Illumina\" %(ref)s %(reads)s | samtools view -@ 12 -b - | samtools fixmate -@ 12 -m - - | samtools sort -@ 12 - | samtools markdup -@ 12 - %(prefix)s.mkdup.bam -" % vars(args))
         if "trimmed" in vars(args) and args.single:
             fm.run_cmd("rm %(reads)s" % vars(args))
         if "trimmed" in vars(args) and not args.single:
-            fm.run_cmd("rm %(prefix)s_1P %(prefix)s_2P %(prefix)s_1U %(prefix)s_2U" % vars(args))
+            fm.run_cmd("rm %(prefix)s_1 %(prefix)s_2" % vars(args))
         fm.run_cmd("samtools index -@ %(threads)s %(prefix)s.mkdup.bam" % vars(args))
         fm.run_cmd("samtools flagstat -@ %(threads)s %(prefix)s.mkdup.bam > %(prefix)s.mkdup.bamstats" % vars(args))
     if args.bqsr_vcf and (args.redo or args.step<2):
